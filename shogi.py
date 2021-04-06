@@ -59,6 +59,10 @@ class Shogi_play:
         #最初は先手番。Trueが先手番、Falseが後手番。
         self.current_player = True
 
+        #駒台クラス．駒を駒台から盤に打つときに使用する．
+        self.sente_koma_dai = Koma_dai("s")
+        self.gote_koma_dai = Koma_dai("g")
+
         #将棋盤にコマを配置。#３つ目の引数の座標は[y,x]で格納されている．
         self.board[1][5] = OU("EOU",gote_koma["EOU"],koma_dir_dis[7],[1,5],"g")
         self.board[9][5] = OU("OU",sente_koma["OU"],koma_dir_dis[7],[9,5],"s")
@@ -83,9 +87,9 @@ class Shogi_play:
         self.board[9][1] = KYO("KY",sente_koma["KY"],koma_dir_dis[1],[9,1],"s")
         self.board[9][9] = KYO("KY",sente_koma["KY"],koma_dir_dis[1],[9,9],"s")
 
-        self.board[2][2] = KAKU("EKK",gote_koma["EKK"],koma_dir_dis[5],[2,2],"g")
+        self.board[2][2] = HISYA("EHI",gote_koma["EHI"],koma_dir_dis[6],[2,8],"g")
         self.board[8][2] = KAKU("KK",sente_koma["KK"],koma_dir_dis[5],[8,2],"s")
-        self.board[2][8] = HISYA("EHI",gote_koma["EHI"],koma_dir_dis[6],[2,8],"g")
+        self.board[2][8] = KAKU("EKK",gote_koma["EKK"],koma_dir_dis[5],[2,2],"g")
         self.board[8][8] = HISYA("HI",sente_koma["HI"],koma_dir_dis[6],[8,8],"s")
 
         for i in range(1,BOARD_SIZE+1):
@@ -101,11 +105,11 @@ class Shogi_play:
     #表示メソッド。
     def display_board(self):
         player_teban = {True:"先手",False:"後手"}
-        print("Now player is {}\n".format(player_teban[self.current_player]))
+        print("\n{}の手番です．\n".format(player_teban[self.current_player]))
 
         print(" ",end="")
         for k in range(BOARD_SIZE):
-            print("{:^4}".format(num_coordinate[k]),end="")
+            print("{:^5}".format(num_coordinate[k]),end="")
         print("")
 
         for i in range(1,BOARD_SIZE+1):
@@ -114,30 +118,43 @@ class Shogi_play:
 
                 if self.board[i][j].num != 0:
                     if self.board[i][j].num < 200:
-                        print("{:^3}".format(koma[self.board[i][j].num]),end="") if self.board[i][j].num < 100 else print("{:^3}".format(nari_koma_dict[self.board[i][j].num-100]),end="")
+                        print("△{:^3}".format(koma[self.board[i][j].num]),end="") if self.board[i][j].num < 100 else print("△{:^3}".format(nari_koma_dict[self.board[i][j].num-100]),end="")
                     else:
-                        print("{:^3}".format(koma[self.board[i][j].num-200]),end="") if self.board[i][j].num < 300 else print("{:^3}".format(nari_koma_dict[self.board[i][j].num-300]),end="")
+                        print("▼{:^3}".format(koma[self.board[i][j].num-200]),end="") if self.board[i][j].num < 300 else print("▼{:^3}".format(nari_koma_dict[self.board[i][j].num-300]),end="")
                 else:
-                    print("{:^3}".format(koma[self.board[i][j].num]),end="")
+                    print("{:^5}".format(koma[self.board[i][j].num]),end="")
 
             print(" ")
 
     #コマを動かすメソッド。
     #nx,nyは動かしたいコマの現在の座標。
     def move(self,nx,ny):
+        #駒台クラスのretain_komaメソッドで使うdict
+        koma_kanji = {"FU":"歩","KY":"香","KE":"桂","GI":"銀","KI":"金","KK":"角","HI":"飛","TO":"歩","NKY":"香","NKE":"桂","NGI":"銀","UMA":"角","RYU":"飛"}
+
         #動かしたいコマの数値を格納
         wanna_move_koma = self.board[ny][nx]
 
         #動かしたいコマが、動かしたい座標まで動かせるかどうかの判定。
         ls = wanna_move_koma.check_move(self,wanna_move_koma,nx,ny)
         if ls:
+            #動かしたい先座標が空でなく駒が存在していたら
+            if not isinstance(self.board[ls[1]][ls[0]],Empty):
+                #先手
+                if self.current_player:
+                    self.sente_koma_dai.retain_koma(koma_kanji[self.board[ls[1]][ls[0]].name[1:]])
+                #後手
+                else:
+                    self.gote_koma_dai.retain_koma(koma_kanji[self.board[ls[1]][ls[0]].name])
+
             #ls[1]はy軸，ls[0]はx軸． ls = [x,y]
             self.board[ls[1]][ls[0]] = wanna_move_koma
             self.board[ls[1]][ls[0]].coordinate = [ls[1],ls[0]]
             #print(self.board[ls[1]][ls[0]].coordinate)
             self.board[ny][nx] = Empty("EMPTY",0,0,0,"e")
         else:
-            print("({},{}) {} can not move there\n".format(nx,ny,wanna_move_koma.name))
+            print("({},{}) {} はそこに動かせません．\n".format(nx,ny,wanna_move_koma.name))
+            return
 
         #成るかどうかの確認．
         if self.current_player and self.board[ls[1]][ls[0]].coordinate[0] <= 3:
@@ -150,14 +167,10 @@ class Shogi_play:
         self.turns += 1
         self.current_player = not self.current_player
 
-    #駒をとって駒台に乗せて管理するメソッド．
-    def koma_dai(self):
-        """ここから"""
-        pass
-
     #終了判定．とりあえず投了したかどうか．
     def touryo(self):
-        print("{} が投了しました．{}の勝ちです．".format(self.current_player,not self.current_player))
+        player_teban = {True:"先手",False:"後手"}
+        print("{} が投了しました．{}の勝ちです．".format(player_teban[self.current_player],player_teban[not self.current_player]))
         return True
 
 
@@ -190,7 +203,7 @@ class Shogi_koma:
         for i in current_moveable:
             print(i)
 
-        input_x,input_y = map(int,input("Enter coordinate you want to move to ").split())
+        input_x,input_y = map(int,input("動かしたい座標を入力してください ").split())
         if [input_x,input_y] in current_moveable:
             return [input_x,input_y]
         else:
@@ -452,7 +465,7 @@ class Shogi_koma:
         #コマを成るかどうかのメソッド．
         #gameにはShogi_playのインスタンスが，to_coordinateには成るかどうかの対象となるコマの移動先座標配列が入る．
     def promote_koma(self,game,to_coordinate):
-        promote_ans = int(input("Do you promote {}? Enter Number> 0:Not 1:Promote ".format(game.board[to_coordinate[1]][to_coordinate[0]].name)))
+        promote_ans = int(input("{} を成りますか?  0:成らない 1:成る ".format(game.board[to_coordinate[1]][to_coordinate[0]].name)))
         sente_nari_koma = {"FU":"TO","KY":"NKY","KE":"NKE","GI":"NGI","KK":"UMA","HI":"RYU"}
         gote_nari_koma = {"EFU":"ETO","EKY":"ENKY","EKE":"ENKE","EGI":"ENGI","EKK":"EUMA","EHI":"ERYU"}
 
@@ -548,38 +561,167 @@ class Wall(Shogi_koma):
         super().__init__(name,num,dir_dis,coord,ally_flag)
 
 
+#駒台クラス．先手用と後手用を作成する．
+class Koma_dai:
+    def __init__(self,teban):
+        #とった駒を保持しておく配列．
+        self.koma_dai = []
+
+        #プレイヤーの手番．
+        #"s"が先手，"g"が後手.
+        self.teban = teban
+
+    #駒を駒台に置くメソッド．
+    #引数koma_nameには駒台に置く駒の名前が入る．
+    def retain_koma(self,koma_name):
+        self.koma_dai.append(koma_name)
+
+    #駒を盤に打つメソッド．
+    #引数gameはShogi_playのインスタンスを格納する．
+    def put_koma(self,game):
+        sente_koma_kanji = {"歩":"FU","香":"KY","桂":"KE","銀":"GI","金":"KI","角":"KK","飛":"HI"}
+        gote_koma_kanji = {"歩":"EFU","香":"EKY","桂":"EKE","銀":"EGI","金":"EKI","角":"EKK","飛":"EHI"}
+
+        koma_class = {"歩":FU,"香":KYO,"桂":KEIMA,"銀":GIN,"金":KIN,"角":KAKU,"飛":HISYA}
+
+        print("{} の持ち駒です．".format("先手")) if self.teban == "s" else print("{} の持ち駒です．".format("後手"))
+        for i in self.koma_dai:
+            print(i,end="")
+        print("\n")
+
+        #駒の名前を漢字で入力
+        n = input("どれを打ちますか．駒の名前を入力してください．> ")
+        x,y = map(int,input("どこに打ちますか．座標を入力してください．(x,y)> ").split())
+        if isinstance(game.board[y][x],Empty):
+            if self.teban == "s":
+                if n == "歩":
+                    if y <= 1 or self.ni_fu(game,[x,y]):
+                        print("({},{}) に歩は打てません．(y座標が1か，二歩です.)".format(x,y))
+                        return
+                if n == "香":
+                    if y <= 1:
+                        print("({},{}) に香は打てません．（y座標が1です．）".format(x,y))
+                        return
+                if n == "桂":
+                    if y <= 2:
+                        print("({},{}) に桂は打てません．（y座標が2以下です．）".format(x,y))
+                        return
+
+                game.board[y][x] = koma_class[n](sente_koma_kanji[n],sente_koma[sente_koma_kanji[n]],koma_dir_dis[sente_koma[sente_koma_kanji[n]]],[y,x],"s")
+                self.koma_dai.remove(n)
+                game.current_player = not game.current_player
+                game.turns += 1
+
+            elif self.teban == "g":
+                if n == "歩":
+                    if y >= 9 or self.ni_fu(game,[x,y]):
+                        print("({},{}) に歩は打てません．(y座標が9か，二歩です.)".format(x,y))
+                        return
+                if n == "香":
+                    if y >= 9:
+                        print("({},{}) に香は打てません．(y座標が9です．)".format(x,y))
+                        return
+                if n == "桂":
+                    if y >= 8:
+                        print("({},{}) に桂は打てません．（y座標が8以上です．）".format(x,y))
+                        return
+
+                game.board[y][x] = koma_class[n](gote_koma_kanji[n],gote_koma[gote_koma_kanji[n]],koma_dir_dis[gote_koma[gote_koma_kanji[n]]-200],[y,x],"g")
+                self.koma_dai.remove(n)
+                game.current_player = not game.current_player
+                game.turns += 1
+        else:
+            print("({},{}) に {} はおけません．".format(x,y,n))
+
+    #引数gameにはShogi_playのインスタンスが入る．
+    #二歩のチェック． coordinateには動かしたい先の座標が入る.coordinate = [x,y]
+    #二歩だったらTrueを返す．
+    def ni_fu(self,game,coordinate):
+        if self.teban == "s":
+            #上方向．
+            y_tmp = coordinate[1] - 1
+            x_tmp = coordinate[0]
+            while y_tmp >= 1:
+                if isinstance(game.board[y_tmp][x_tmp],FU) and game.board[y_tmp][x_tmp].ally_flag == "s":
+                    return True
+                y_tmp -= 1
+
+            #下方向．
+            y_tmp = coordinate[1] + 1
+            x_tmp = coordinate[0]
+            while y_tmp <= 9:
+                if isinstance(game.board[y_tmp][x_tmp],FU) and game.board[y_tmp][x_tmp].ally_flag == "s":
+                    return True
+                y_tmp += 1
+
+            return False
+
+        elif self.teban == "g":
+            #上方向
+            y_tmp = coordinate[1] + 1
+            x_tmp = coordinate[0]
+            while y_tmp <= 9:
+                if isinstance(game.board[y_tmp][x_tmp],FU) and game.board[y_tmp][x_tmp].ally_flag == "g":
+                    return True
+                y_tmp += 1
+
+            #下方向．
+            y_tmp = coordinate[1] - 1
+            x_tmp = coordinate[0]
+            while y_tmp >= 1:
+                if isinstance(game.board[y_tmp][x_tmp],FU) and game.board[y_tmp][x_tmp].ally_flag == "g":
+                    return True
+                y_tmp -= 1
+
+            return False
+
+
 #main関数
 def main():
     game = Shogi_play()
 
-    game.display_board()
     while 1:
-        select = int(input("数字を選んでください. 1:駒を動かす 2:投了> "))
+        game.display_board()
+        select = int(input("数字を選んでください. 1:駒を動かす 2:駒を打つ 3:投了> "))
         if select == 1:
-            x,y = map(int,input("動かしたい駒の座標を入れてください．(x,y)> ").split())
+            x,y = map(int,input("動かしたい駒の座標を入力してください．(x,y)> ").split())
             game.move(x,y)
         if select == 2:
+            if game.current_player:
+                game.sente_koma_dai.put_koma(game)
+            elif not game.current_player:
+                game.gote_koma_dai.put_koma(game)
+        if select == 3:
             game.touryo()
             break
 
 
 if __name__ == "__main__":
     main()
+
+    """デバック用"""
     """game = Shogi_play()
     #game.display_board()
     #game.move(8,8)
 
-    game.board[5][5] = HISYA("HI",sente_koma["HI"],koma_dir_dis[6],[5,5],"s")
     #game.board[4][5] = FU("FU",sente_koma["FU"],koma_dir_dis[0],[4,5],"s")
     #game.move(5,4)
-    #game.board[5][5] = HISYA("EHI",gote_koma["EHI"],koma_dir_dis[6],[5,5],"g")
 
+    #game.board[5][5] = HISYA("EHI",gote_koma["EHI"],koma_dir_dis[6],[5,5],"g")
     #game.current_player = not game.current_player
+
+    game.board[5][5] = HISYA("HI",sente_koma["HI"],koma_dir_dis[6],[5,5],"s")
+    game.board[7][1] = HISYA("HI",sente_koma["HI"],koma_dir_dis[6],[7,1],"s")
     game.display_board()
     game.move(5,5)
     game.display_board()
 
-    for i in range(1,BOARD_SIZE+1):
+    #game.sente_koma_dai.koma_dai.append("香")
+    game.sente_koma_dai.put_koma(game)
+    #game.gote_koma_dai.put_koma(game)
+    game.display_board()"""
+
+    """for i in range(1,BOARD_SIZE+1):
         for j in range(1,BOARD_SIZE+1):
             print("{:^6}".format(game.board[i][j].name),end="")
         print(" ")"""
