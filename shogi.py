@@ -1,4 +1,4 @@
-""" Shogi code with python """
+""" Shogi code with python completed version 2021/4/6"""
 
 import numpy as np
 
