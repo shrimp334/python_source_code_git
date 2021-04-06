@@ -698,30 +698,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-    """デバック用"""
-    """game = Shogi_play()
-    #game.display_board()
-    #game.move(8,8)
-
-    #game.board[4][5] = FU("FU",sente_koma["FU"],koma_dir_dis[0],[4,5],"s")
-    #game.move(5,4)
-
-    #game.board[5][5] = HISYA("EHI",gote_koma["EHI"],koma_dir_dis[6],[5,5],"g")
-    #game.current_player = not game.current_player
-
-    game.board[5][5] = HISYA("HI",sente_koma["HI"],koma_dir_dis[6],[5,5],"s")
-    game.board[7][1] = HISYA("HI",sente_koma["HI"],koma_dir_dis[6],[7,1],"s")
-    game.display_board()
-    game.move(5,5)
-    game.display_board()
-
-    #game.sente_koma_dai.koma_dai.append("香")
-    game.sente_koma_dai.put_koma(game)
-    #game.gote_koma_dai.put_koma(game)
-    game.display_board()"""
-
-    """for i in range(1,BOARD_SIZE+1):
-        for j in range(1,BOARD_SIZE+1):
-            print("{:^6}".format(game.board[i][j].name),end="")
-        print(" ")"""
